@@ -59,7 +59,10 @@ namespace Microsoft.BotBuilderSamples
                     await turnContext.SendActivityAsync(MessageFactory.Text("This seems related to what you asked:"), cancellationToken);
                 }
 
-                await turnContext.SendActivityAsync(MessageFactory.Text($"Question: {response[0].Questions[0]}" + System.Environment.NewLine + $"Answer: {response[0].Answer}"), cancellationToken);
+                var message = MessageFactory.Text($"**Question**: {response[0].Questions[0]}{System.Environment.NewLine}{System.Environment.NewLine}**Answer**:{System.Environment.NewLine}{response[0].Answer}");
+                message.TextFormat = "markdown";
+
+                await turnContext.SendActivityAsync(message, cancellationToken);
 
                 // Handle the additional responses:
                 if (response.Length > 1)
@@ -67,8 +70,10 @@ namespace Microsoft.BotBuilderSamples
                     await turnContext.SendActivityAsync(MessageFactory.Text("I also found these topics:"), cancellationToken);
                     for (int i = 1; i < response.Length; i++)
                     {
-                        await turnContext.SendActivityAsync(MessageFactory.Text($"Question: {response[i].Questions[0]}" + System.Environment.NewLine + $"Answer: {response[i].Answer}"), cancellationToken);
+                        message = MessageFactory.Text($"**Question**:{System.Environment.NewLine}{System.Environment.NewLine}{response[i].Questions[0]}{System.Environment.NewLine}{System.Environment.NewLine}**Answer**:{System.Environment.NewLine}{System.Environment.NewLine}{response[i].Answer}");
+                        message.TextFormat = "markdown";
 
+                        await turnContext.SendActivityAsync(message, cancellationToken);
                     }
                 }
             }
