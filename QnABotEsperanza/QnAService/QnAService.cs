@@ -60,7 +60,7 @@ namespace QnAPrompting.Helpers
             var options = new QnAMakerOptions
             {
                 Top = 3,
-                ScoreThreshold = 20
+                ScoreThreshold = 60
             };
 
             var hostname = configuration["QnAEndpointHostName"];

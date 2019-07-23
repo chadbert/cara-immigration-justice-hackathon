@@ -64,11 +64,11 @@ namespace Microsoft.BotBuilderSamples
                 {
                     await turnContext.SendActivityAsync(MessageFactory.Text("Sorry, I couldn't find an answer to that question. Please try rephrasing the question."), cancellationToken);
                 }
-                else if (firstResponse.Score < 20)
+                else if (firstResponse.Score < 80)
                 {
                     // Express some uncertainty in the result
                     // Add two new lines for markdown
-                    await turnContext.SendActivityAsync(MessageFactory.Text("Did you mean to ask about:"), cancellationToken);
+                    await turnContext.SendActivityAsync(MessageFactory.Text("Did you mean to ask about any of these topics:"), cancellationToken);
 
                     string message = string.Empty;
 
