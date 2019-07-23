@@ -9,6 +9,7 @@ using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Connector.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using QnAPrompting.Helpers;
 
 namespace Microsoft.BotBuilderSamples
 {
@@ -26,11 +27,13 @@ namespace Microsoft.BotBuilderSamples
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
-            // Add the HttpClientFactory to be used for the QnAMaker calls.
-            services.AddHttpClient();
+            //// Add the HttpClientFactory to be used for the QnAMaker calls.
+            //services.AddHttpClient();
 
             // Create the Bot Framework Adapter with error handling enabled.
             services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
+
+            services.AddHttpClient<IQnAService, QnAService>();
 
             // Create the bot as a transient. In this case the ASP Controller is expecting an IBot.
             services.AddTransient<IBot, QnABot>();

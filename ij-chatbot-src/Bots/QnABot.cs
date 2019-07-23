@@ -1,14 +1,17 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Net.Http;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Bot.Builder;
-using Microsoft.Bot.Builder.AI.QnA;
 using Microsoft.Bot.Schema;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using QnAPrompting.Helpers;
+using QnAPrompting.Models;
 
 namespace Microsoft.BotBuilderSamples
 {
@@ -16,74 +19,94 @@ namespace Microsoft.BotBuilderSamples
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<QnABot> _logger;
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IQnAService _qnaService;
 
-        public QnABot(IConfiguration configuration, ILogger<QnABot> logger, IHttpClientFactory httpClientFactory)
+        public QnABot(IConfiguration configuration, ILogger<QnABot> logger, IQnAService qnaService)
         {
             _configuration = configuration;
             _logger = logger;
-            _httpClientFactory = httpClientFactory;
+            _qnaService = qnaService;
+        }
+
+        protected override async Task OnMembersAddedAsync(IList<ChannelAccount> membersAdded, ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken)
+        {
+            var memberList = new List<string>();
+
+            foreach (var member in membersAdded)
+            {
+                memberList.Add(member.Name);
+            }
+
+            await turnContext.SendActivityAsync(MessageFactory.Text($"Hi {String.Join(", ", memberList)}"), cancellationToken);
+            await turnContext.SendActivityAsync(MessageFactory.Text("Please ask me a question. For example: 'What is a CFI prep?'"), cancellationToken);
         }
 
         protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-
-            var qnaMaker = new QnAMaker(new QnAMakerEndpoint
-            {
-                KnowledgeBaseId = _configuration["QnAKnowledgebaseId"],
-                EndpointKey = _configuration["QnAAuthKey"],
-                Host = GetHostname()
-            },
-            null,
-            httpClient);
+            // TODO: bot name is esperansa
+            // TODOs: 
+            // - better formatting of responses
+            // - Typing "Hello" provides multiple greetings.
 
             _logger.LogInformation("Calling QnA Maker");
 
-            // The actual call to the QnA Maker service.
-            // The response will contain all of the questions that provide the response.
-            var response = await qnaMaker.GetAnswersAsync(turnContext, new QnAMakerOptions { Top = 3 });
+            // make the query
+            var response = await _qnaService.QueryQnAServiceAsync(turnContext.Activity.Text, null);
+            // score, context, questions
+
             if (response != null && response.Length > 0)
             {
-                // If multiple responses are received, the first element will be the most confident.
+                // The first response will always be the most confident, so we use that as the main response
+                var firstResponse = response.First();
 
-                // Append lack of confidence message if applicable.
-                if (response[0].Score < 0.5)
+                // if no answer could be found that meets the threshold, we'll get a response with score 0
+                if (firstResponse.Score == 0)
                 {
-                    // Answer may not apply at all
-                    await turnContext.SendActivityAsync(MessageFactory.Text("I couldn't find a good answer to your question. Here's the closest match:"), cancellationToken);
+                    await turnContext.SendActivityAsync(MessageFactory.Text("Sorry, I couldn't find an answer to that question. Please try rephrasing the question."), cancellationToken);
                 }
-                else if (response[0].Score < 0.7)
+                else if (firstResponse.Score < 20)
                 {
                     // Express some uncertainty in the result
-                    await turnContext.SendActivityAsync(MessageFactory.Text("This seems related to what you asked:"), cancellationToken);
-                }
+                    // Add two new lines for markdown
+                    await turnContext.SendActivityAsync(MessageFactory.Text("Did you mean to ask about:"), cancellationToken);
 
-                var message = MessageFactory.Text($"**Question**: {response[0].Questions[0]}{System.Environment.NewLine}{System.Environment.NewLine}**Answer**:{System.Environment.NewLine}{response[0].Answer}");
-                message.TextFormat = "markdown";
+                    string message = string.Empty;
 
-                await turnContext.SendActivityAsync(message, cancellationToken);
-
-                // Handle the additional responses:
-                if (response.Length > 1)
-                {
-                    await turnContext.SendActivityAsync(MessageFactory.Text("I also found these topics:"), cancellationToken);
-                    for (int i = 1; i < response.Length; i++)
+                    for (int i = 0; i < response.Length; i++)
                     {
-                        message = MessageFactory.Text($"**Question**:{System.Environment.NewLine}{System.Environment.NewLine}{response[i].Questions[0]}{System.Environment.NewLine}{System.Environment.NewLine}**Answer**:{System.Environment.NewLine}{System.Environment.NewLine}{response[i].Answer}");
-                        message.TextFormat = "markdown";
+                        message += CreateQuestionAndAnswerString(response[i].Questions[0], response[i].Answer);
+                    }
 
-                        await turnContext.SendActivityAsync(message, cancellationToken);
+                    var messageActivity = MessageFactory.Text(message);
+                    messageActivity.TextFormat = "markdown";
+
+                    await turnContext.SendActivityAsync(messageActivity, cancellationToken);
+                }
+                else
+                {
+                    // If the first response contains prompts, then we will show that experience. Otherwise, show additional responses as "related topics"
+                    var answer = firstResponse.Answer;
+                    var prompts = firstResponse.Context?.Prompts;
+
+                    if (prompts != null && prompts.Length > 0)
+                    {
+                        // send the text as text message because teams doesn't support markdown in cards
+                        await turnContext.SendActivityAsync(MessageFactory.Text(answer), cancellationToken);
+                        await turnContext.SendActivityAsync(CardHelper.GetHeroCard(prompts), cancellationToken);
+                    }
+                    else
+                    {
+                        var messageActivity = MessageFactory.Text(firstResponse.Answer);
+                        messageActivity.TextFormat = "markdown";
+
+                        await turnContext.SendActivityAsync(messageActivity, cancellationToken);
                     }
                 }
             }
             else
             {
-                await turnContext.SendActivityAsync(MessageFactory.Text("No QnA Maker answers were found."), cancellationToken);
+                await turnContext.SendActivityAsync(MessageFactory.Text("Sorry, I couldn't find an answer to that question. Please try rephrasing the question."), cancellationToken);
             }
-
-            // TODOs: 
-            // - better formatting of responses
         }
 
         private string GetHostname()
@@ -100,6 +123,50 @@ namespace Microsoft.BotBuilderSamples
             }
 
             return hostname;
+        }
+
+        private string CreateQuestionAndAnswerString(string question, string answer)
+        {
+            return $"**Question**:{System.Environment.NewLine}{System.Environment.NewLine}{question}{System.Environment.NewLine}{System.Environment.NewLine}**Answer**:{System.Environment.NewLine}{System.Environment.NewLine}{answer}{System.Environment.NewLine}{System.Environment.NewLine}";
+        }
+    }
+
+    public class CardHelper
+    {
+        /// <summary>
+        /// Get Hero card
+        /// </summary>
+        /// <param name="cardText">Text for the card</param>
+        /// <param name="prompts">List of suggested prompts</param>
+        /// <returns>Message activity</returns>
+        public static Activity GetHeroCard(QnAPrompts[] prompts)
+        {
+            var chatActivity = Activity.CreateMessageActivity();
+            var buttons = new List<CardAction>();
+
+            var sortedPrompts = prompts.OrderBy(r => r.DisplayOrder);
+            foreach (var prompt in sortedPrompts)
+            {
+                buttons.Add(
+                    new CardAction()
+                    {
+                        Value = prompt.DisplayText,
+                        Type = ActionTypes.ImBack,
+                        Title = prompt.DisplayText,
+                    });
+            }
+
+            var plCard = new HeroCard()
+            {
+                Title = "Related topics",
+                Buttons = buttons,
+            };
+
+            var attachment = plCard.ToAttachment();
+
+            chatActivity.Attachments.Add(attachment);
+
+            return (Activity)chatActivity;
         }
     }
 }
