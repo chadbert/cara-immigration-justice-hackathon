@@ -56,7 +56,7 @@
             var options = new QnAMakerOptions
             {
                 Top = 3,
-                ScoreThreshold = 60
+                ScoreThreshold = float.Parse(configuration["QnAScoreThreshold"])
             };
 
             var hostname = configuration["QnAEndpointHostName"];

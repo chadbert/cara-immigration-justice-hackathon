@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
-using Microsoft.Bot.Connector.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using QnAService;
 
 namespace Microsoft.BotBuilderSamples
 {
@@ -26,8 +26,7 @@ namespace Microsoft.BotBuilderSamples
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
-            // Add the HttpClientFactory to be used for the QnAMaker calls.
-            services.AddHttpClient();
+            services.AddHttpClient<IQnAService, QnAService.QnAService>();
 
             // Create the Bot Framework Adapter with error handling enabled.
             services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
