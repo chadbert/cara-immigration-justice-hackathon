@@ -10,8 +10,7 @@ using Microsoft.Bot.Builder;
 using Microsoft.Bot.Schema;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using QnAPrompting.Helpers;
-using QnAPrompting.Models;
+using QnAService;
 
 namespace Microsoft.BotBuilderSamples
 {
@@ -43,17 +42,19 @@ namespace Microsoft.BotBuilderSamples
 
         protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
-            // TODO: bot name is esperansa
+            // TODO: bot name is esperanza
             // TODOs: 
-            // - better formatting of responses
-            // - Typing "Hello" provides multiple greetings.
+            //   - better formatting of responses
+            //   - Improve the "startup" experience
+            //       - bot should introduce itself, suggest actions for the user
+            // Future work:
+            //   - receive feedback on quality of responses
+            //   - allow the user to provide a new question answer pair if it doesn't exist (needs to be moderated as well).
 
             _logger.LogInformation("Calling QnA Maker");
 
             // make the query
             var response = await _qnaService.QueryQnAServiceAsync(turnContext.Activity.Text, null);
-            // score, context, questions
-
             if (response != null && response.Length > 0)
             {
                 // The first response will always be the most confident, so we use that as the main response
@@ -92,7 +93,7 @@ namespace Microsoft.BotBuilderSamples
                     {
                         // send the text as text message because teams doesn't support markdown in cards
                         await turnContext.SendActivityAsync(MessageFactory.Text(answer), cancellationToken);
-                        await turnContext.SendActivityAsync(CardHelper.GetHeroCard(prompts), cancellationToken);
+                        await turnContext.SendActivityAsync(CreateHeroCard(prompts), cancellationToken);
                     }
                     else
                     {
@@ -129,17 +130,8 @@ namespace Microsoft.BotBuilderSamples
         {
             return $"**Question**:{System.Environment.NewLine}{System.Environment.NewLine}{question}{System.Environment.NewLine}{System.Environment.NewLine}**Answer**:{System.Environment.NewLine}{System.Environment.NewLine}{answer}{System.Environment.NewLine}{System.Environment.NewLine}";
         }
-    }
 
-    public class CardHelper
-    {
-        /// <summary>
-        /// Get Hero card
-        /// </summary>
-        /// <param name="cardText">Text for the card</param>
-        /// <param name="prompts">List of suggested prompts</param>
-        /// <returns>Message activity</returns>
-        public static Activity GetHeroCard(QnAPrompts[] prompts)
+        public static Activity CreateHeroCard(QnAPrompts[] prompts)
         {
             var chatActivity = Activity.CreateMessageActivity();
             var buttons = new List<CardAction>();

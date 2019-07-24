@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.757
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QnAService", "QnAService.csproj", "{BB6B8059-09E5-430B-B9D4-54DF0C6B5A64}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BB6B8059-09E5-430B-B9D4-54DF0C6B5A64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB6B8059-09E5-430B-B9D4-54DF0C6B5A64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB6B8059-09E5-430B-B9D4-54DF0C6B5A64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB6B8059-09E5-430B-B9D4-54DF0C6B5A64}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {11B2BA4F-799D-4099-BFE4-011CC33ACF89}
+	EndGlobalSection
+EndGlobal
